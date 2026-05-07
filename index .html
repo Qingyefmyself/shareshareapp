@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>享享 - 分享此刻，分享生活</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+</head>
+<body>
+
+    <div class="container">
+        <!-- 注册页面 -->
+        <main id="register-page" class="page active">
+            <div class="register-content">
+                <!-- 品牌头部 -->
+                <div class="brand-header">
+                    <div class="brand-logo-text">
+                        <span class="logo-char">享</span>
+                    </div>
+                    <h1 class="brand-name">享享</h1>
+                    <p class="brand-slogan">分享此刻，分享生活</p>
+                </div>
+
+                <!-- 欢迎文案 -->
+                <div class="welcome-message">
+                    <p>您好！我们是「享享Shareshare」的开发者，致力于打造一个让人人都能分享自己想法，表达创作的平台！本测试主要用于评估平台的 「标签-风格-内容匹配系统」。</p>
+                    <p>当前版本中，你可以同时充当反馈者和创作者！你会率先成为评价者评价他人创作，随后由你亲自创作，系统会根据你的创作内容和风格偏好，自动匹配对象并进行反馈评价。</p>
+                    <p>请根据真实感受创作并作答，每一位用户的数据都至关重要，用于改进匹配算法，感谢你的参与~</p>
+                </div>
+
+                <!-- 注册表单 -->
+                <div class="form-card">
+                    <h2>欢迎加入</h2>
+                    <form id="register-form">
+                        <div class="form-group">
+                            <label for="nickname">昵称</label>
+                            <input type="text" id="nickname" placeholder="请输入昵称">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="gender">性别</label>
+                            <select id="gender">
+                                <option value="">请选择</option>
+                                <option value="male">男</option>
+                                <option value="female">女</option>
+                                <option value="other">其他</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="interests">兴趣</label>
+                            <input type="text" id="interests" placeholder="请输入兴趣，用逗号分隔">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="bio">个人简介</label>
+                            <textarea id="bio" placeholder="请输入个人简介"></textarea>
+                        </div>
+
+                        <button type="submit" class="primary-btn">开始探索</button>
+                    </form>
+                </div>
+
+                <p class="privacy-note">点击"开始探索"即表示您同意我们的服务条款</p>
+
+                <!-- 隐藏的管理员入口 -->
+                <div id="admin-hidden-area" class="admin-hidden" onclick="showAdminAccess()">
+                    <small></small>
+                </div>
+                <div id="admin-access-panel" class="admin-access-panel" style="display:none;">
+                    <button id="admin-export-btn" class="submenu-btn">导出所有日志</button>
+                    <button id="admin-sync-btn" class="submenu-btn">同步到Firebase</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- 主页 -->
+        <main id="home-page" class="page">
+            <div class="home-content">
+                <h1>享享</h1>
+                <p>分享此刻，分享生活</p>
+                <p class="beta-tag">Beta 测试版</p>
+
+                <div id="task-status" class="task-status">
+                    <span id="feedback-status" class="status-badge">评价任务：待完成</span>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="match-btn" class="primary-btn">开始匹配</button>
+                    <button id="create-btn" class="secondary-btn">我来创作</button>
+                </div>
+
+                <p id="task-hint" class="task-hint">请先完成评价任务后再进行创作</p>
+            </div>
+        </main>
+
+        <!-- 匹配中界面 -->
+        <main id="matching-page" class="page">
+            <div class="matching-content">
+                <div class="loading-spinner"></div>
+                <h2>正在搜索</h2>
+                <p>寻找合适的内容...</p>
+            </div>
+        </main>
+
+        <!-- 正在发布中界面 -->
+        <main id="publishing-page" class="page">
+            <div class="matching-content">
+                <div class="loading-spinner"></div>
+                <h2>正在发布中</h2>
+                <p>请稍候...</p>
+            </div>
+        </main>
+
+        <!-- 发布成功，正在匹配界面 -->
+        <main id="publishing-success-page" class="page">
+            <div class="matching-content">
+                <div class="success-icon">✓</div>
+                <h2>发布成功！</h2>
+                <p>正在匹配用户进行评价...</p>
+                <div class="loading-spinner"></div>
+            </div>
+        </main>
+
+        <!-- 反馈者界面 -->
+        <main id="feedback-page" class="page">
+            <div class="feedback-header">
+                <h2>内容评分</h2>
+                <p>您当前是评分者，请对以下内容进行评价</p>
+            </div>
+
+            <div id="feedback-container">
+                <!-- 动态生成反馈内容 -->
+            </div>
+
+            <div class="feedback-actions">
+                <button id="submit-feedback">提交评价</button>
+            </div>
+        </main>
+
+        <!-- 创作界面 -->
+        <main id="create-page" class="page">
+            <!-- 创作提示窗口 -->
+            <div id="task-hint-panel" class="task-hint-panel">
+                <div class="task-hint-header" id="task-hint-toggle">
+                    <span class="task-hint-icon">📝</span>
+                    <span class="task-hint-title">春日拼诗挑战</span>
+                    <span class="task-hint-toggle-icon" id="toggle-icon">▼</span>
+                </div>
+                <div id="task-hint-content" class="task-hint-content">
+                    <p>为了测试软件的匹配效率，我们希望您进行 「春日拼诗」 挑战！我们会根据您的创作结果以及收到的评价给予您相应的奖励~</p>
+                    <p style="margin-top: 15px; font-weight: 600; color: #667eea;">我们希望您做三件事：</p>
+                    <ol>
+                        <li>创作一首短诗，主题围绕 <span style="color: #2ecc71;">春天</span></li>
+                        <li>把下面三个词自然地放进你的句子里：<span style="color: #2ecc71;">泥土</span>、<span style="color: #2ecc71;">风铃</span>、<span style="color: #2ecc71;">鸟儿</span>（可以换成任意鸟的名字）</li>
+                        <li>写 <span style="color: #2ecc71;">3-5</span> 句话，长短随意</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="create-header">
+                <h2>创作分享</h2>
+            </div>
+
+            <div class="create-form">
+                <div class="form-group">
+                    <input type="text" id="create-title" placeholder="标题">
+                </div>
+
+                <div class="form-group">
+                    <textarea id="create-content" placeholder="分享你的想法..."></textarea>
+                </div>
+
+                <div class="create-tools">
+                    <button class="tool-btn" title="上传图片"><i class="fas fa-image"></i></button>
+                    <button class="tool-btn" title="添加表情"><i class="far fa-smile"></i></button>
+                    <button class="tool-btn" title="添加标签"><i class="fas fa-tag"></i></button>
+                </div>
+
+                <button id="submit-creation">发布</button>
+            </div>
+        </main>
+
+        <!-- 消息页面 -->
+        <main id="messages-page" class="page">
+            <div class="messages-content">
+                <h2>消息</h2>
+                <p>暂无新消息</p>
+            </div>
+        </main>
+
+        <!-- 个人中心页面 -->
+        <main id="profile-page" class="page">
+            <div class="profile-content">
+                <h2>个人中心</h2>
+                <p>个人信息和设置</p>
+
+                <div id="user-info" class="user-info">
+                    <p><strong>昵称：</strong><span id="display-nickname">-</span></p>
+                    <p><strong>性别：</strong><span id="display-gender">-</span></p>
+                    <p><strong>兴趣：</strong><span id="display-interests">-</span></p>
+                    <p><strong>个人简介：</strong><span id="display-bio">-</span></p>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <button id="developer-btn" class="secondary-btn" style="width: 100%;">开发者模式</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- 问卷1页面（匹配体验） -->
+        <main id="survey1-page" class="page">
+            <div class="survey-content">
+                <h2>问卷</h2>
+                <p>为了优化匹配系统，提高匹配双方的适合度，请根据你此刻的真实感受，回答以下问题。你的评分将帮助我们判断这次匹配是否成功，以及是否需要在下一轮中调整推荐策略。</p>
+
+                <form id="survey1-form">
+                    <div class="form-group">
+                        <label>1. 我觉得这个评价对我很不友善。</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="q1" value="1"> 1 - 非常不符合</label>
+                            <label><input type="radio" name="q1" value="2"> 2</label>
+                            <label><input type="radio" name="q1" value="3"> 3</label>
+                            <label><input type="radio" name="q1" value="4"> 4</label>
+                            <label><input type="radio" name="q1" value="5"> 5</label>
+                            <label><input type="radio" name="q1" value="6"> 6</label>
+                            <label><input type="radio" name="q1" value="7"> 7 - 非常符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>2. 我从这句话中感受到了敌意与不舒服。</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="q2" value="1"> 1 - 非常不符合</label>
+                            <label><input type="radio" name="q2" value="2"> 2</label>
+                            <label><input type="radio" name="q2" value="3"> 3</label>
+                            <label><input type="radio" name="q2" value="4"> 4</label>
+                            <label><input type="radio" name="q2" value="5"> 5</label>
+                            <label><input type="radio" name="q2" value="6"> 6</label>
+                            <label><input type="radio" name="q2" value="7"> 7 - 非常符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>3. 我觉得评价中带有个人主观情绪。</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="q3" value="1"> 1 - 非常不符合</label>
+                            <label><input type="radio" name="q3" value="2"> 2</label>
+                            <label><input type="radio" name="q3" value="3"> 3</label>
+                            <label><input type="radio" name="q3" value="4"> 4</label>
+                            <label><input type="radio" name="q3" value="5"> 5</label>
+                            <label><input type="radio" name="q3" value="6"> 6</label>
+                            <label><input type="radio" name="q3" value="7"> 7 - 非常符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>4. 我感觉对方在敷衍评价，没有真正关心我的作品。</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="q4" value="1"> 1 - 非常不符合</label>
+                            <label><input type="radio" name="q4" value="2"> 2</label>
+                            <label><input type="radio" name="q4" value="3"> 3</label>
+                            <label><input type="radio" name="q4" value="4"> 4</label>
+                            <label><input type="radio" name="q4" value="5"> 5</label>
+                            <label><input type="radio" name="q4" value="6"> 6</label>
+                            <label><input type="radio" name="q4" value="7"> 7 - 非常符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>5. 我觉得对方不够真诚。</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="q5" value="1"> 1 - 非常不符合</label>
+                            <label><input type="radio" name="q5" value="2"> 2</label>
+                            <label><input type="radio" name="q5" value="3"> 3</label>
+                            <label><input type="radio" name="q5" value="4"> 4</label>
+                            <label><input type="radio" name="q5" value="5"> 5</label>
+                            <label><input type="radio" name="q5" value="6"> 6</label>
+                            <label><input type="radio" name="q5" value="7"> 7 - 非常符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>6. 我觉得对方足够专业。</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="q6" value="1"> 1 - 非常不符合</label>
+                            <label><input type="radio" name="q6" value="2"> 2</label>
+                            <label><input type="radio" name="q6" value="3"> 3</label>
+                            <label><input type="radio" name="q6" value="4"> 4</label>
+                            <label><input type="radio" name="q6" value="5"> 5</label>
+                            <label><input type="radio" name="q6" value="6"> 6</label>
+                            <label><input type="radio" name="q6" value="7"> 7 - 非常符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>7. 我觉得对方的评价对我有帮助。</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="q7" value="1"> 1 - 非常不符合</label>
+                            <label><input type="radio" name="q7" value="2"> 2</label>
+                            <label><input type="radio" name="q7" value="3"> 3</label>
+                            <label><input type="radio" name="q7" value="4"> 4</label>
+                            <label><input type="radio" name="q7" value="5"> 5</label>
+                            <label><input type="radio" name="q7" value="6"> 6</label>
+                            <label><input type="radio" name="q7" value="7"> 7 - 非常符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>8. 你对刚才创作的诗歌投入程度。</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="q8" value="1"> 1 - 非常低</label>
+                            <label><input type="radio" name="q8" value="2"> 2</label>
+                            <label><input type="radio" name="q8" value="3"> 3</label>
+                            <label><input type="radio" name="q8" value="4"> 4</label>
+                            <label><input type="radio" name="q8" value="5"> 5</label>
+                            <label><input type="radio" name="q8" value="6"> 6</label>
+                            <label><input type="radio" name="q8" value="7"> 7 - 非常高</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="font-weight: bold; margin-top: 20px;">请评估以下情绪词与你当下真实感受的匹配程度：</label>
+                    </div>
+
+                    <div class="form-group">
+                        <label>生气的</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="emotion1" value="1"> 1 - 完全不符合</label>
+                            <label><input type="radio" name="emotion1" value="2"> 2</label>
+                            <label><input type="radio" name="emotion1" value="3"> 3</label>
+                            <label><input type="radio" name="emotion1" value="4"> 4</label>
+                            <label><input type="radio" name="emotion1" value="5"> 5</label>
+                            <label><input type="radio" name="emotion1" value="6"> 6</label>
+                            <label><input type="radio" name="emotion1" value="7"> 7 - 完全符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>有敌意的</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="emotion2" value="1"> 1 - 完全不符合</label>
+                            <label><input type="radio" name="emotion2" value="2"> 2</label>
+                            <label><input type="radio" name="emotion2" value="3"> 3</label>
+                            <label><input type="radio" name="emotion2" value="4"> 4</label>
+                            <label><input type="radio" name="emotion2" value="5"> 5</label>
+                            <label><input type="radio" name="emotion2" value="6"> 6</label>
+                            <label><input type="radio" name="emotion2" value="7"> 7 - 完全符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>易怒的</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="emotion3" value="1"> 1 - 完全不符合</label>
+                            <label><input type="radio" name="emotion3" value="2"> 2</label>
+                            <label><input type="radio" name="emotion3" value="3"> 3</label>
+                            <label><input type="radio" name="emotion3" value="4"> 4</label>
+                            <label><input type="radio" name="emotion3" value="5"> 5</label>
+                            <label><input type="radio" name="emotion3" value="6"> 6</label>
+                            <label><input type="radio" name="emotion3" value="7"> 7 - 完全符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>藐视的</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="emotion4" value="1"> 1 - 完全不符合</label>
+                            <label><input type="radio" name="emotion4" value="2"> 2</label>
+                            <label><input type="radio" name="emotion4" value="3"> 3</label>
+                            <label><input type="radio" name="emotion4" value="4"> 4</label>
+                            <label><input type="radio" name="emotion4" value="5"> 5</label>
+                            <label><input type="radio" name="emotion4" value="6"> 6</label>
+                            <label><input type="radio" name="emotion4" value="7"> 7 - 完全符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>厌恶的</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="emotion5" value="1"> 1 - 完全不符合</label>
+                            <label><input type="radio" name="emotion5" value="2"> 2</label>
+                            <label><input type="radio" name="emotion5" value="3"> 3</label>
+                            <label><input type="radio" name="emotion5" value="4"> 4</label>
+                            <label><input type="radio" name="emotion5" value="5"> 5</label>
+                            <label><input type="radio" name="emotion5" value="6"> 6</label>
+                            <label><input type="radio" name="emotion5" value="7"> 7 - 完全符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>憎恶的</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="emotion6" value="1"> 1 - 完全不符合</label>
+                            <label><input type="radio" name="emotion6" value="2"> 2</label>
+                            <label><input type="radio" name="emotion6" value="3"> 3</label>
+                            <label><input type="radio" name="emotion6" value="4"> 4</label>
+                            <label><input type="radio" name="emotion6" value="5"> 5</label>
+                            <label><input type="radio" name="emotion6" value="6"> 6</label>
+                            <label><input type="radio" name="emotion6" value="7"> 7 - 完全符合</label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="primary-btn">提交问卷</button>
+                </form>
+            </div>
+        </main>
+
+        <!-- 等待下一条评价页面 -->
+        <main id="wait-next-feedback-page" class="page">
+            <div class="matching-content">
+                <h2>第一条评价已查看！</h2>
+                <p style="margin-bottom: 30px; color: #666;">准备好继续查看下一条评价了吗？</p>
+                <button id="next-feedback-btn" class="primary-btn">继续查看下一条评价</button>
+            </div>
+        </main>
+
+        <!-- 问卷2页面（评价反馈） -->
+        <main id="survey2-page" class="page">
+            <div class="survey-content">
+                <h2>问卷</h2>
+                <p>随着反馈的推进，你的感受是否发生了变化？请继续评估本轮匹配质量。</p>
+
+                <form id="survey2-form">
+                    <div class="form-group">
+                        <label>1. 我觉得这个评价对我很不友善。</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="q1" value="1"> 1 - 非常不符合</label>
+                            <label><input type="radio" name="q1" value="2"> 2</label>
+                            <label><input type="radio" name="q1" value="3"> 3</label>
+                            <label><input type="radio" name="q1" value="4"> 4</label>
+                            <label><input type="radio" name="q1" value="5"> 5</label>
+                            <label><input type="radio" name="q1" value="6"> 6</label>
+                            <label><input type="radio" name="q1" value="7"> 7 - 非常符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>2. 我从这句话中感受到了敌意与不舒服。</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="q2" value="1"> 1 - 非常不符合</label>
+                            <label><input type="radio" name="q2" value="2"> 2</label>
+                            <label><input type="radio" name="q2" value="3"> 3</label>
+                            <label><input type="radio" name="q2" value="4"> 4</label>
+                            <label><input type="radio" name="q2" value="5"> 5</label>
+                            <label><input type="radio" name="q2" value="6"> 6</label>
+                            <label><input type="radio" name="q2" value="7"> 7 - 非常符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>3. 我觉得评价中带有个人主观情绪。</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="q3" value="1"> 1 - 非常不符合</label>
+                            <label><input type="radio" name="q3" value="2"> 2</label>
+                            <label><input type="radio" name="q3" value="3"> 3</label>
+                            <label><input type="radio" name="q3" value="4"> 4</label>
+                            <label><input type="radio" name="q3" value="5"> 5</label>
+                            <label><input type="radio" name="q3" value="6"> 6</label>
+                            <label><input type="radio" name="q3" value="7"> 7 - 非常符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>4. 我感觉对方在敷衍评价，没有真正关心我的作品。</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="q4" value="1"> 1 - 非常不符合</label>
+                            <label><input type="radio" name="q4" value="2"> 2</label>
+                            <label><input type="radio" name="q4" value="3"> 3</label>
+                            <label><input type="radio" name="q4" value="4"> 4</label>
+                            <label><input type="radio" name="q4" value="5"> 5</label>
+                            <label><input type="radio" name="q4" value="6"> 6</label>
+                            <label><input type="radio" name="q4" value="7"> 7 - 非常符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>5. 我觉得对方不够真诚。</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="q5" value="1"> 1 - 非常不符合</label>
+                            <label><input type="radio" name="q5" value="2"> 2</label>
+                            <label><input type="radio" name="q5" value="3"> 3</label>
+                            <label><input type="radio" name="q5" value="4"> 4</label>
+                            <label><input type="radio" name="q5" value="5"> 5</label>
+                            <label><input type="radio" name="q5" value="6"> 6</label>
+                            <label><input type="radio" name="q5" value="7"> 7 - 非常符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>6. 我觉得对方足够专业。</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="q6" value="1"> 1 - 非常不符合</label>
+                            <label><input type="radio" name="q6" value="2"> 2</label>
+                            <label><input type="radio" name="q6" value="3"> 3</label>
+                            <label><input type="radio" name="q6" value="4"> 4</label>
+                            <label><input type="radio" name="q6" value="5"> 5</label>
+                            <label><input type="radio" name="q6" value="6"> 6</label>
+                            <label><input type="radio" name="q6" value="7"> 7 - 非常符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>7. 我觉得对方的评价对我有帮助。</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="q7" value="1"> 1 - 非常不符合</label>
+                            <label><input type="radio" name="q7" value="2"> 2</label>
+                            <label><input type="radio" name="q7" value="3"> 3</label>
+                            <label><input type="radio" name="q7" value="4"> 4</label>
+                            <label><input type="radio" name="q7" value="5"> 5</label>
+                            <label><input type="radio" name="q7" value="6"> 6</label>
+                            <label><input type="radio" name="q7" value="7"> 7 - 非常符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>8. 你对刚才创作的诗歌投入程度。</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="q8" value="1"> 1 - 非常低</label>
+                            <label><input type="radio" name="q8" value="2"> 2</label>
+                            <label><input type="radio" name="q8" value="3"> 3</label>
+                            <label><input type="radio" name="q8" value="4"> 4</label>
+                            <label><input type="radio" name="q8" value="5"> 5</label>
+                            <label><input type="radio" name="q8" value="6"> 6</label>
+                            <label><input type="radio" name="q8" value="7"> 7 - 非常高</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="font-weight: bold; margin-top: 20px;">请评估以下情绪词与你当下真实感受的匹配程度：</label>
+                    </div>
+
+                    <div class="form-group">
+                        <label>生气的</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="emotion1" value="1"> 1 - 完全不符合</label>
+                            <label><input type="radio" name="emotion1" value="2"> 2</label>
+                            <label><input type="radio" name="emotion1" value="3"> 3</label>
+                            <label><input type="radio" name="emotion1" value="4"> 4</label>
+                            <label><input type="radio" name="emotion1" value="5"> 5</label>
+                            <label><input type="radio" name="emotion1" value="6"> 6</label>
+                            <label><input type="radio" name="emotion1" value="7"> 7 - 完全符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>有敌意的</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="emotion2" value="1"> 1 - 完全不符合</label>
+                            <label><input type="radio" name="emotion2" value="2"> 2</label>
+                            <label><input type="radio" name="emotion2" value="3"> 3</label>
+                            <label><input type="radio" name="emotion2" value="4"> 4</label>
+                            <label><input type="radio" name="emotion2" value="5"> 5</label>
+                            <label><input type="radio" name="emotion2" value="6"> 6</label>
+                            <label><input type="radio" name="emotion2" value="7"> 7 - 完全符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>易怒的</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="emotion3" value="1"> 1 - 完全不符合</label>
+                            <label><input type="radio" name="emotion3" value="2"> 2</label>
+                            <label><input type="radio" name="emotion3" value="3"> 3</label>
+                            <label><input type="radio" name="emotion3" value="4"> 4</label>
+                            <label><input type="radio" name="emotion3" value="5"> 5</label>
+                            <label><input type="radio" name="emotion3" value="6"> 6</label>
+                            <label><input type="radio" name="emotion3" value="7"> 7 - 完全符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>藐视的</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="emotion4" value="1"> 1 - 完全不符合</label>
+                            <label><input type="radio" name="emotion4" value="2"> 2</label>
+                            <label><input type="radio" name="emotion4" value="3"> 3</label>
+                            <label><input type="radio" name="emotion4" value="4"> 4</label>
+                            <label><input type="radio" name="emotion4" value="5"> 5</label>
+                            <label><input type="radio" name="emotion4" value="6"> 6</label>
+                            <label><input type="radio" name="emotion4" value="7"> 7 - 完全符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>厌恶的</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="emotion5" value="1"> 1 - 完全不符合</label>
+                            <label><input type="radio" name="emotion5" value="2"> 2</label>
+                            <label><input type="radio" name="emotion5" value="3"> 3</label>
+                            <label><input type="radio" name="emotion5" value="4"> 4</label>
+                            <label><input type="radio" name="emotion5" value="5"> 5</label>
+                            <label><input type="radio" name="emotion5" value="6"> 6</label>
+                            <label><input type="radio" name="emotion5" value="7"> 7 - 完全符合</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>憎恶的</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="emotion6" value="1"> 1 - 完全不符合</label>
+                            <label><input type="radio" name="emotion6" value="2"> 2</label>
+                            <label><input type="radio" name="emotion6" value="3"> 3</label>
+                            <label><input type="radio" name="emotion6" value="4"> 4</label>
+                            <label><input type="radio" name="emotion6" value="5"> 5</label>
+                            <label><input type="radio" name="emotion6" value="6"> 6</label>
+                            <label><input type="radio" name="emotion6" value="7"> 7 - 完全符合</label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="primary-btn">提交问卷</button>
+                </form>
+            </div>
+        </main>
+
+        <!-- 开发者模式页面 -->
+        <main id="developer-page" class="page">
+            <div class="survey-content">
+                <h2>开发者模式</h2>
+                
+                <div class="form-group">
+                    <label>当前用户ID</label>
+                    <div id="developer-user-id" style="background: #f5f5f5; padding: 10px; border-radius: 8px; font-family: monospace;">加载中...</div>
+                </div>
+                
+                <div class="form-group">
+                    <label>当前分组</label>
+                    <div id="developer-group" style="background: #f5f5f5; padding: 10px; border-radius: 8px;">加载中...</div>
+                </div>
+                
+                <div class="form-group">
+                    <label>手动切换分组</label>
+                    <select id="group-select">
+                        <option value="1">组1 - LLM先扬后抑</option>
+                        <option value="2">组2 - LLM先抑后扬</option>
+                        <option value="3">组3 - 人类先扬后抑</option>
+                        <option value="4">组4 - 人类先抑后扬</option>
+                    </select>
+                </div>
+                
+                <button id="save-group-btn" class="primary-btn">保存分组设置</button>
+                <button id="save-and-register-btn" class="secondary-btn" style="margin-top: 10px;">保存并重新注册</button>
+                <button id="back-to-home-btn" class="secondary-btn" style="margin-top: 10px;">返回主页（不更改）</button>
+                
+                <p style="color: #999; font-size: 0.85em; margin-top: 20px;">提示：切换分组后需要重新注册才能生效</p>
+            </div>
+        </main>
+
+        <!-- 评价反馈页面 -->
+        <main id="feedback-response-page" class="page">
+            <div class="feedback-response-content">
+                <h2>评价反馈</h2>
+                <p>您对收到的评价有什么看法？</p>
+
+                <div class="feedback-response-buttons">
+                    <button id="approve-feedback" class="approve-btn">认可该评价</button>
+                    <button id="reject-feedback" class="disapprove-btn">不认可该评价</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- 底部导航栏 -->
+    <nav class="bottom-nav">
+        <button class="nav-btn active" data-page="home-page">
+            <i class="fas fa-home"></i>
+            <span>主页</span>
+        </button>
+        <button class="nav-btn" data-page="messages-page">
+            <i class="fas fa-comment"></i>
+            <span>消息</span>
+        </button>
+        <button class="nav-btn" data-page="profile-page">
+            <i class="fas fa-user"></i>
+            <span>我的</span>
+        </button>
+    </nav>
+</div>
+
+<!-- 自定义提示弹窗 -->
+<div id="custom-alert" class="custom-alert">
+    <div class="custom-alert-content">
+        <p id="custom-alert-message"></p>
+        <button id="custom-alert-ok" class="primary-btn">确定</button>
+    </div>
+</div>
+<script src="script.js"></script>
+</body>
+</html>
