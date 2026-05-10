@@ -85,11 +85,14 @@ let currentUserId = null;
 // 用户状态跟踪
 let userState = {
     feedbackCompleted: false,  // 评价任务是否完成
+    feedbackCount: 0,          // 已评价次数
+    evaluatedContentIds: [],    // 已评价的内容ID列表
     creationCompleted: false,  // 创作任务是否完成
     feedback1Received: false, // 是否收到第一个评价
     feedback2Received: false, // 是否收到第二个评价
     survey1Completed: false,  // 问卷1是否完成
-    survey2Completed: false    // 问卷2是否完成
+    survey2Completed: false,   // 问卷2是否完成
+    waitingForFeedback: false  // 是否正在等待评价
 };
 
 // 生成唯一用户ID
@@ -102,6 +105,10 @@ function updateHomePageState() {
     const feedbackStatus = document.getElementById('feedback-status');
     const taskHint = document.getElementById('task-hint');
     const createBtn = document.getElementById('create-btn');
+    const matchBtn = document.getElementById('match-btn');
+    const viewFeedbackBtn = document.getElementById('view-feedback-btn');
+    const statusSpinner = document.getElementById('status-spinner');
+    const matchHint = document.getElementById('match-hint');
     
     if (feedbackStatus) {
         if (userState.survey2Completed) {
@@ -109,16 +116,46 @@ function updateHomePageState() {
             feedbackStatus.className = 'status-badge completed';
             if (taskHint) taskHint.textContent = '感谢您的参与！';
             if (createBtn) createBtn.disabled = true;
-        } else if (userState.feedbackCompleted) {
-            feedbackStatus.textContent = '评价任务：已完成';
+            if (matchBtn) matchBtn.disabled = true;
+            if (viewFeedbackBtn) viewFeedbackBtn.style.display = 'none';
+            if (statusSpinner) statusSpinner.style.display = 'none';
+            if (matchHint) matchHint.style.display = 'none';
+        } else if (userState.feedback1Received || userState.feedback2Received) {
+            feedbackStatus.textContent = '已收到评价';
             feedbackStatus.className = 'status-badge completed';
-            if (taskHint) taskHint.textContent = '请继续完成创作和问卷';
-            if (createBtn) createBtn.disabled = false;
-        } else {
-            feedbackStatus.textContent = '评价任务：待完成';
-            feedbackStatus.className = 'status-badge pending';
-            if (taskHint) taskHint.textContent = '请先完成评价任务后再进行创作';
+            if (taskHint) taskHint.textContent = '请查看收到的评价';
             if (createBtn) createBtn.disabled = true;
+            if (matchBtn) matchBtn.disabled = true;
+            if (viewFeedbackBtn) viewFeedbackBtn.style.display = 'block';
+            if (statusSpinner) statusSpinner.style.display = 'none';
+            if (matchHint) matchHint.style.display = 'none';
+        } else if (userState.waitingForFeedback) {
+            feedbackStatus.textContent = '内容已提交，正在匹配中';
+            feedbackStatus.className = 'status-badge pending';
+            if (taskHint) taskHint.textContent = '预计2分钟内收到评价，您可以在此期间评价其他用户的作品';
+            if (createBtn) createBtn.disabled = true;
+            if (matchBtn) matchBtn.disabled = false;
+            if (viewFeedbackBtn) viewFeedbackBtn.style.display = 'none';
+            if (statusSpinner) statusSpinner.style.display = 'inline-block';
+            if (matchHint) matchHint.style.display = 'block';
+        } else if (userState.creationCompleted) {
+            feedbackStatus.textContent = '创作完成';
+            feedbackStatus.className = 'status-badge completed';
+            if (taskHint) taskHint.textContent = '正在等待匹配评价...';
+            if (createBtn) createBtn.disabled = true;
+            if (matchBtn) matchBtn.disabled = false;
+            if (viewFeedbackBtn) viewFeedbackBtn.style.display = 'none';
+            if (statusSpinner) statusSpinner.style.display = 'inline-block';
+            if (matchHint) matchHint.style.display = 'block';
+        } else {
+            feedbackStatus.textContent = '创作任务：待完成';
+            feedbackStatus.className = 'status-badge pending';
+            if (taskHint) taskHint.textContent = '请先完成创作';
+            if (createBtn) createBtn.disabled = false;
+            if (matchBtn) matchBtn.disabled = true;
+            if (viewFeedbackBtn) viewFeedbackBtn.style.display = 'none';
+            if (statusSpinner) statusSpinner.style.display = 'none';
+            if (matchHint) matchHint.style.display = 'none';
         }
     }
 }
@@ -492,11 +529,14 @@ document.addEventListener('DOMContentLoaded', function() {
             // 重置用户状态
             userState = {
                 feedbackCompleted: false,
+                feedbackCount: 0,
+                evaluatedContentIds: [],
                 creationCompleted: false,
                 feedback1Received: false,
                 feedback2Received: false,
                 survey1Completed: false,
-                survey2Completed: false
+                survey2Completed: false,
+                waitingForFeedback: false
             };
             
             // 显示主页
@@ -521,77 +561,64 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 匹配按钮点击事件
     document.getElementById('match-btn').addEventListener('click', function() {
+        // 检查是否还有未评价的内容
+        const shares = [
+            { id: 1, content: '《那天风很大》\n\n风铃是被惊动的证人。\n倒影碎了又合上。\n你踩过松动的泥土，\n什么都没种下，就走了。\n我后来才想起，那是春天。\n但已经没有花了。', type: '诗歌', author: { nickname: '林深见鹿', gender: '女', tags: ['INFP', '诗歌', '摄影', '治愈系', '自然爱好者'], bio: '在文字里寻找灵魂的栖息地 | 偶尔拍照记录生活 | 相信每个瞬间都有意义' } },
+            { id: 2, content: '《练习：隐喻》\n\n我的心是倒影里的天空，\n风铃在肋骨间摇晃不安，\n每寸血管都流着解冻的泥土。\n春天在皮下组织秘密登陆，\n而我假装仍在冬眠。', type: '诗歌', author: { nickname: '雾散长安', gender: '男', tags: ['INTJ', '哲学', '艺术', '深夜诗人', '咖啡成瘾'], bio: '白天是程序员，夜晚是诗人 | 在代码与文字之间寻找平衡 | 相信逻辑与感性可以共存' } },
+            { id: 3, content: '《失眠纪要》\n\n数到第三千只羊时，风铃突然响了一下。\n没有风。那么是你来了吗。\n枕头像新翻的泥土，蓬松又潮湿。\n我翻了个身，把倒影压进床单的褶皱里。', type: '诗歌', author: { nickname: '星垂野阔', gender: '女', tags: ['INFJ', '心理学', '写作', '猫奴', '深夜emo选手'], bio: '心理学研究生 | 喜欢观察人类 | 写一些关于孤独与连接的文字 | 有两只猫' } },
+            { id: 4, content: '《明天也是普通的一天》\n\n主歌A\n闹钟响了三遍才睁眼\n刷牙的时候看着镜子里的脸\n昨天熬夜追的剧还没看完\n今天又要迟到了吧\n\n主歌B\n地铁里的人都不说话\n各自抱着手机像抱着盾牌\n有人戴着耳机闭着眼\n有人在打字，打了又删\n\n副歌\n没关系，没关系\n反正明天也是普通的一天\n没关系，没关系\n我们早就习惯了\n在这座城市里\n做一个安静的零件\n\n主歌C\n午饭吃的是楼下的便利店\n坐在靠窗的位置看了会儿天\n窗台上的绿萝又黄了一片\n想浇水，又忘了\n\n桥段\n也不是没有开心的事\n只是开心的事\n好像不值得拿出来说\n就像你，就像我\n\n副歌（重复）\n没关系，没关系\n反正明天也是普通的一天\n没关系，没关系\n我们早就习惯了\n在这座城市里\n做一个安静的零件\n\n结尾\n闹钟响了\n又是明天', type: '歌词', author: { nickname: '城市漫游者', gender: '男', tags: ['ENFP', '音乐制作', '街头摄影', '社畜诗人', 'City Pop爱好者'], bio: '广告文案策划 | 业余音乐人 | 在城市的缝隙里寻找灵感 | 相信平凡中自有诗意' } }
+        ];
+        
+        // 过滤未评价的内容，保持原有顺序
+        const unevaluatedShares = shares.filter(share => !userState.evaluatedContentIds.includes(share.id));
+        
+        if (unevaluatedShares.length === 0) {
+            customAlert('暂无新内容，请稍后再试');
+            return;
+        }
+        
         showPage('matching-page');
         
         // 模拟匹配过程
         setTimeout(function() {
-            showFeedbackPage();
+            // 按顺序选择第一个未评价的内容
+            showFeedbackPage(unevaluatedShares[0]);
         }, 2000); // 2秒后显示反馈页面
     });
     
+    // 查看评价按钮点击事件
+    const viewFeedbackBtn = document.getElementById('view-feedback-btn');
+    if (viewFeedbackBtn) {
+        viewFeedbackBtn.addEventListener('click', function() {
+            if (userState.feedback1Received && !userState.survey1Completed) {
+                showReceivedFeedbackPage(1);
+            } else if (userState.feedback2Received && !userState.survey2Completed) {
+                showReceivedFeedbackPage(2);
+            }
+        });
+    }
+    
     // 创作按钮点击事件
     document.getElementById('create-btn').addEventListener('click', function() {
-        if (!userState.feedbackCompleted) {
-            customAlert('请先完成评价任务后再进行创作');
-            return;
-        }
         showPage('create-page');
     });
     
     // 显示反馈页面
-    function showFeedbackPage() {
+    function showFeedbackPage(selectedShare) {
         showPage('feedback-page');
         
-        // 模拟其他用户的分享内容
-        const shares = [
-            {
-                id: 1,
-                content: '《那天风很大》\n\n风铃是被惊动的证人。\n倒影碎了又合上。\n你踩过松动的泥土，\n什么都没种下，就走了。\n我后来才想起，那是春天。\n但已经没有花了。',
-                type: '诗歌',
-                author: {
-                    nickname: '林深见鹿',
-                    gender: '女',
-                    tags: ['INFP', '诗歌', '摄影', '治愈系', '自然爱好者'],
-                    bio: '在文字里寻找灵魂的栖息地 | 偶尔拍照记录生活 | 相信每个瞬间都有意义'
-                }
-            },
-            {
-                id: 2,
-                content: '《练习：隐喻》\n\n我的心是倒影里的天空，\n风铃在肋骨间摇晃不安，\n每寸血管都流着解冻的泥土。\n春天在皮下组织秘密登陆，\n而我假装仍在冬眠。',
-                type: '诗歌',
-                author: {
-                    nickname: '雾散长安',
-                    gender: '男',
-                    tags: ['INTJ', '哲学', '艺术', '深夜诗人', '咖啡成瘾'],
-                    bio: '白天是程序员，夜晚是诗人 | 在代码与文字之间寻找平衡 | 相信逻辑与感性可以共存'
-                }
-            },
-            {
-                id: 3,
-                content: '《失眠纪要》\n\n数到第三千只羊时，风铃突然响了一下。\n没有风。那么是你来了吗。\n枕头像新翻的泥土，蓬松又潮湿。\n我翻了个身，把倒影压进床单的褶皱里。',
-                type: '诗歌',
-                author: {
-                    nickname: '星垂野阔',
-                    gender: '女',
-                    tags: ['INFJ', '心理学', '写作', '猫奴', '深夜emo选手'],
-                    bio: '心理学研究生 | 喜欢观察人类 | 写一些关于孤独与连接的文字 | 有两只猫'
-                }
-            },
-            {
-                id: 4,
-                content: '《明天也是普通的一天》\n\n主歌A\n闹钟响了三遍才睁眼\n刷牙的时候看着镜子里的脸\n昨天熬夜追的剧还没看完\n今天又要迟到了吧\n\n主歌B\n地铁里的人都不说话\n各自抱着手机像抱着盾牌\n有人戴着耳机闭着眼\n有人在打字，打了又删\n\n副歌\n没关系，没关系\n反正明天也是普通的一天\n没关系，没关系\n我们早就习惯了\n在这座城市里\n做一个安静的零件\n\n主歌C\n午饭吃的是楼下的便利店\n坐在靠窗的位置看了会儿天\n窗台上的绿萝又黄了一片\n想浇水，又忘了\n\n桥段\n也不是没有开心的事\n只是开心的事\n好像不值得拿出来说\n就像你，就像我\n\n副歌（重复）\n没关系，没关系\n反正明天也是普通的一天\n没关系，没关系\n我们早就习惯了\n在这座城市里\n做一个安静的零件\n\n结尾\n闹钟响了\n又是明天',
-                type: '歌词',
-                author: {
-                    nickname: '城市漫游者',
-                    gender: '男',
-                    tags: ['ENFP', '音乐制作', '街头摄影', '社畜诗人', 'City Pop爱好者'],
-                    bio: '广告文案策划 | 业余音乐人 | 在城市的缝隙里寻找灵感 | 相信平凡中自有诗意'
-                }
+        // 使用传入的内容或默认内容
+        const randomShare = selectedShare || {
+            id: 1,
+            content: '《那天风很大》\n\n风铃是被惊动的证人。\n倒影碎了又合上。\n你踩过松动的泥土，\n什么都没种下，就走了。\n我后来才想起，那是春天。\n但已经没有花了。',
+            type: '诗歌',
+            author: {
+                nickname: '林深见鹿',
+                gender: '女',
+                tags: ['INFP', '诗歌', '摄影', '治愈系', '自然爱好者'],
+                bio: '在文字里寻找灵魂的栖息地 | 偶尔拍照记录生活 | 相信每个瞬间都有意义'
             }
-        ];
-        
-        // 随机选择一个分享内容
-        const randomShare = shares[Math.floor(Math.random() * shares.length)];
+        };
         
         const feedbackContainer = document.getElementById('feedback-container');
         feedbackContainer.innerHTML = '';
@@ -689,12 +716,15 @@ document.addEventListener('DOMContentLoaded', function() {
             // 上传到 Firebase
             uploadToFirebase(currentUserId, 'feedback', feedbackData);
             
-            // 设置评价任务完成状态
-            userState.feedbackCompleted = true;
+            // 记录已评价的内容ID
+            if (!userState.evaluatedContentIds) {
+                userState.evaluatedContentIds = [];
+            }
+            userState.evaluatedContentIds.push(randomShare.id);
             
             // 显示成功提示
-            customAlert('反馈已提交！');
-            // 返回主页，让用户自己选择下一步
+            customAlert('评价成功！');
+            // 返回主页
             showPage('home-page');
             updateHomePageState();
         });
@@ -721,14 +751,14 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 人类评价者列表
         const humanEvaluators = [
-            { name: '诗酒年华', tags: ['诗歌爱好者', '文艺青年'] },
-            { name: '清风明月', tags: ['文学评论', '自由撰稿'] },
-            { name: '墨香书韵', tags: ['阅读达人', '书评人'] },
-            { name: '云淡风轻', tags: ['生活观察者', '业余诗人'] }
+            { name: '用户a231gda1p', tags: [] },
+            { name: '用户b572hfc9q', tags: [] },
+            { name: '用户c394jkd2r', tags: [] },
+            { name: '用户d816mne7s', tags: [] }
         ];
         
         // LLM评价者
-        const llmEvaluator = { name: '豆包AI', tags: ['AI助手', '智能评价'] };
+        const llmEvaluator = { name: '该评价由大语言模型智能AI生成', tags: [] };
         
         let feedback, evaluator;
         
@@ -859,21 +889,31 @@ document.addEventListener('DOMContentLoaded', function() {
             // 上传到 Firebase
             uploadToFirebase(currentUserId, 'creation', creationData);
 
+            // 设置创作完成状态和等待状态
+            userState.creationCompleted = true;
+            userState.waitingForFeedback = true;
+
             // 清空表单
             document.getElementById('create-title').value = '';
             document.getElementById('create-content').value = '';
-            // 显示正在发布中
-            showPage('publishing-page');
 
-            // 3秒后显示发布成功，正在匹配
+            // 显示创作完成提示
+            showCreationCompleteTip();
+
+            // 更新今日分享数量
+            updateTodayShares(39);
+
+            // 返回主页显示状态
+            showPage('home-page');
+            updateHomePageState();
+            
+            // 3分钟后显示收到的评价1
             setTimeout(function() {
-                showPage('publishing-success-page');
-
-                // 1分钟后显示收到的评价1
-                setTimeout(function() {
-                    showReceivedFeedbackPage(1);
-                }, 60000);
-            }, 3000);
+                userState.feedback1Received = true;
+                userState.waitingForFeedback = false;
+                updateHomePageState();
+                customAlert('匹配已完成！已收到评价，请查看。');
+            }, 180000); // 3分钟
         } else {
             customAlert('请填写标题和内容');
         }
@@ -927,10 +967,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // 显示匹配提示，准备接收第二个评价
         showPage('publishing-success-page');
 
-        // 15秒后显示收到的评价2
+        // 2秒后显示收到的评价2
         setTimeout(function() {
             showReceivedFeedbackPage(2);
-        }, 15000);
+        }, 2000);
     });
     
     // 问卷2提交
@@ -1125,3 +1165,58 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// 展开/收起创作完成提示
+function toggleCreationTip() {
+    const tip = document.getElementById('creation-complete-tip');
+    const arrow = document.getElementById('tip-arrow');
+    if (tip) {
+        tip.classList.toggle('collapsed');
+        if (arrow) {
+            arrow.classList.toggle('collapsed');
+        }
+    }
+}
+
+// 显示创作完成提示
+function showCreationCompleteTip() {
+    const tip = document.getElementById('creation-complete-tip');
+    if (tip) {
+        tip.style.display = 'block';
+    }
+}
+
+// 更新今日分享数量
+function updateTodayShares(count) {
+    const statNumber = document.querySelector('.stat-number');
+    if (statNumber && statNumber.nextElementSibling && statNumber.nextElementSibling.textContent === '今日分享') {
+        statNumber.textContent = count;
+    }
+}
+
+// 在线人数波动更新
+let baseOnlineCount = 128;
+
+function updateOnlineCount() {
+    const onlineUsersElement = document.getElementById('online-users');
+    if (!onlineUsersElement) return;
+    
+    // 在基础人数上下波动（±15）
+    const fluctuation = Math.floor(Math.random() * 31) - 15;
+    const currentCount = baseOnlineCount + fluctuation;
+    
+    onlineUsersElement.textContent = `${currentCount}人在线`;
+}
+
+// 每隔3-8秒更新一次在线人数
+function scheduleOnlineCountUpdate() {
+    const delay = 3000 + Math.random() * 5000;
+    setTimeout(function() {
+        updateOnlineCount();
+        scheduleOnlineCountUpdate();
+    }, delay);
+}
+
+// 初始化在线人数更新
+updateOnlineCount();
+scheduleOnlineCountUpdate();
