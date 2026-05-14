@@ -95,69 +95,134 @@ let userState = {
     waitingForFeedback: false  // 是否正在等待评价
 };
 
+// 当前正在评价的内容
+let currentFeedbackShare = null;
+
 // 生成唯一用户ID
 function generateUserId() {
     return 'user_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
 }
 
-// 更新主页面的状态显示
-function updateHomePageState() {
-    const feedbackStatus = document.getElementById('feedback-status');
-    const taskHint = document.getElementById('task-hint');
-    const createBtn = document.getElementById('create-btn');
-    const matchBtn = document.getElementById('match-btn');
-    const viewFeedbackBtn = document.getElementById('view-feedback-btn');
-    const statusSpinner = document.getElementById('status-spinner');
-    const matchHint = document.getElementById('match-hint');
+// 更新任务步骤指引UI
+function updateTaskGuide() {
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    const step3 = document.getElementById('step3');
+    const taskCard = document.getElementById('current-task-card');
+    const waitingArea = document.getElementById('waiting-area');
+    const completeArea = document.getElementById('task-complete-area');
+    const startTaskBtn = document.getElementById('start-task-btn');
+    const currentTaskTitle = document.getElementById('current-task-title');
+    const currentTaskDesc = document.getElementById('current-task-desc');
+    const waitingMessage = document.getElementById('waiting-message');
     
-    if (feedbackStatus) {
-        if (userState.survey2Completed) {
-            feedbackStatus.textContent = '全部任务已完成';
-            feedbackStatus.className = 'status-badge completed';
-            if (taskHint) taskHint.textContent = '感谢您的参与！';
-            if (createBtn) createBtn.disabled = true;
-            if (matchBtn) matchBtn.disabled = true;
-            if (viewFeedbackBtn) viewFeedbackBtn.style.display = 'none';
-            if (statusSpinner) statusSpinner.style.display = 'none';
-            if (matchHint) matchHint.style.display = 'none';
-        } else if (userState.feedback1Received || userState.feedback2Received) {
-            feedbackStatus.textContent = '已收到评价';
-            feedbackStatus.className = 'status-badge completed';
-            if (taskHint) taskHint.textContent = '请查看收到的评价';
-            if (createBtn) createBtn.disabled = true;
-            if (matchBtn) matchBtn.disabled = true;
-            if (viewFeedbackBtn) viewFeedbackBtn.style.display = 'block';
-            if (statusSpinner) statusSpinner.style.display = 'none';
-            if (matchHint) matchHint.style.display = 'none';
-        } else if (userState.waitingForFeedback) {
-            feedbackStatus.textContent = '内容已提交，正在匹配中';
-            feedbackStatus.className = 'status-badge pending';
-            if (taskHint) taskHint.textContent = '预计2分钟内收到评价，您可以在此期间评价其他用户的作品';
-            if (createBtn) createBtn.disabled = true;
-            if (matchBtn) matchBtn.disabled = false;
-            if (viewFeedbackBtn) viewFeedbackBtn.style.display = 'none';
-            if (statusSpinner) statusSpinner.style.display = 'inline-block';
-            if (matchHint) matchHint.style.display = 'block';
-        } else if (userState.creationCompleted) {
-            feedbackStatus.textContent = '创作完成';
-            feedbackStatus.className = 'status-badge completed';
-            if (taskHint) taskHint.textContent = '正在等待匹配评价...';
-            if (createBtn) createBtn.disabled = true;
-            if (matchBtn) matchBtn.disabled = false;
-            if (viewFeedbackBtn) viewFeedbackBtn.style.display = 'none';
-            if (statusSpinner) statusSpinner.style.display = 'inline-block';
-            if (matchHint) matchHint.style.display = 'block';
-        } else {
-            feedbackStatus.textContent = '创作任务：待完成';
-            feedbackStatus.className = 'status-badge pending';
-            if (taskHint) taskHint.textContent = '请先完成创作';
-            if (createBtn) createBtn.disabled = false;
-            if (matchBtn) matchBtn.disabled = true;
-            if (viewFeedbackBtn) viewFeedbackBtn.style.display = 'none';
-            if (statusSpinner) statusSpinner.style.display = 'none';
-            if (matchHint) matchHint.style.display = 'none';
+    if (!step1 || !step2 || !step3) return;
+    
+    // 移除所有状态
+    [step1, step2, step3].forEach(step => {
+        step.classList.remove('active', 'completed');
+    });
+    
+    // 隐藏所有区域
+    if (taskCard) taskCard.style.display = 'none';
+    if (waitingArea) waitingArea.style.display = 'none';
+    if (completeArea) completeArea.style.display = 'none';
+    
+    // 根据状态更新UI
+    if (userState.survey2Completed) {
+        // 所有任务完成
+        step1.classList.add('completed');
+        step2.classList.add('completed');
+        step3.classList.add('completed');
+        document.querySelector('.step-connector:nth-of-type(1)')?.classList.add('completed');
+        document.querySelector('.step-connector:nth-of-type(2)')?.classList.add('completed');
+        
+        if (completeArea) {
+            completeArea.style.display = 'block';
+        }
+    } else if (userState.survey1Completed || userState.feedback2Received) {
+        // 任务3：查看评价并完成评价反馈（第二条反馈或问卷1已完成）
+        step1.classList.add('completed');
+        step2.classList.add('completed');
+        step3.classList.add('active');
+        
+        if (taskCard) {
+            taskCard.style.display = 'block';
+            if (currentTaskTitle) currentTaskTitle.textContent = '当前任务：查看评价并完成评价反馈';
+            if (currentTaskDesc) currentTaskDesc.textContent = '请查看收到的反馈评价，并完成最终问卷。';
+            if (startTaskBtn) startTaskBtn.textContent = '查看反馈';
+        }
+    } else if (userState.feedback1Received) {
+        // 任务3：收到第一条反馈，先查看评价
+        step1.classList.add('completed');
+        step2.classList.add('completed');
+        step3.classList.add('active');
+        
+        if (taskCard) {
+            taskCard.style.display = 'block';
+            if (currentTaskTitle) currentTaskTitle.textContent = '当前任务：查看评价并完成评价反馈';
+            if (currentTaskDesc) currentTaskDesc.textContent = '已收到第一条反馈，请查看评价内容。';
+            if (startTaskBtn) startTaskBtn.textContent = '查看评价';
+        }
+    } else if (userState.feedbackCount > 0) {
+        // 已完成任务2：评价他人（至少评价1首即完成）
+        step1.classList.add('completed');
+        step2.classList.add('completed');
+        step3.classList.add('active');
+        document.querySelector('.step-connector:nth-of-type(1)')?.classList.add('completed');
+        
+        if (taskCard) {
+            taskCard.style.display = 'block';
+            if (currentTaskTitle) currentTaskTitle.textContent = '当前任务：等待反馈或继续评价';
+            if (currentTaskDesc) currentTaskDesc.textContent = `已评价 ${userState.feedbackCount} 首，可继续评价或等待他人评价。`;
+            if (startTaskBtn) startTaskBtn.textContent = userState.feedback1Received ? '查看评价' : '继续评价';
+        }
+    } else if (userState.creationCompleted) {
+        // 任务1完成，进入任务2
+        step1.classList.add('completed');
+        step2.classList.add('active');
+        step3.classList.add('active');
+        
+        if (taskCard) {
+            taskCard.style.display = 'block';
+            if (currentTaskTitle) currentTaskTitle.textContent = '当前任务：评价他人作品';
+            if (currentTaskDesc) currentTaskDesc.textContent = '您已提交创作，请先帮助评价至少1首他人的作品。';
+            if (startTaskBtn) startTaskBtn.textContent = '开始评价';
+        }
+        
+        if (waitingArea) {
+            waitingArea.style.display = 'block';
+            if (waitingMessage) waitingMessage.textContent = '创作已提交，正在等待反馈...';
+        }
+    } else {
+        // 默认状态：任务1
+        step1.classList.add('active');
+        step2.classList.add('active');
+        step3.classList.add('active');
+        
+        if (taskCard) {
+            taskCard.style.display = 'block';
+            if (currentTaskTitle) currentTaskTitle.textContent = '当前任务：创作短诗';
+            if (currentTaskDesc) currentTaskDesc.textContent = '请根据提示创作一首关于春天的短诗。';
+            if (startTaskBtn) startTaskBtn.textContent = '开始创作';
         }
     }
+    
+    // 更新连接线状态
+    const connectors = document.querySelectorAll('.step-connector');
+    if (connectors.length >= 2) {
+        if (step1.classList.contains('completed')) {
+            connectors[0].classList.add('completed');
+        }
+        if (step2.classList.contains('completed')) {
+            connectors[1].classList.add('completed');
+        }
+    }
+}
+
+// 更新主页面的状态显示
+function updateHomePageState() {
+    updateTaskGuide();
 }
 
 // 更新"我的"页面显示用户信息
@@ -496,6 +561,264 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // 开始任务按钮全局点击事件
+    document.getElementById('start-task-btn').addEventListener('click', function() {
+        if (!userState.creationCompleted) {
+            // 任务1：还没创作，去创作页面
+            showPage('create-page');
+        } else if (userState.feedbackCount === 0 || (!userState.feedback1Received && !userState.survey1Completed)) {
+            // 任务2：创作完成但还没评价，去评价页面
+            document.getElementById('match-btn').click();
+        } else if (userState.feedback1Received || userState.feedback2Received) {
+            // 任务3：查看反馈
+            if (userState.feedback1Received && !userState.survey1Completed) {
+                showReceivedFeedbackPage(1);
+            } else if (userState.feedback2Received) {
+                showReceivedFeedbackPage(2);
+            }
+        }
+    });
+    
+    // 全局事件委托 - 确保所有流程按钮都能正常工作
+    document.addEventListener('click', function(e) {
+        const target = e.target;
+        
+        // 发布按钮
+        if (target.id === 'submit-creation' || target.closest('#submit-creation')) {
+            e.preventDefault();
+            const title = document.getElementById('create-title').value;
+            const content = document.getElementById('create-content').value;
+            
+            console.log('发布按钮点击（委托）- title:', title, 'content:', content);
+            
+            if (title && content) {
+                const creationData = {
+                    title,
+                    content
+                };
+                addLog('creation', creationData);
+                uploadToFirebase(currentUserId, 'creation', creationData);
+
+                userState.creationCompleted = true;
+                userState.waitingForFeedback = true;
+
+                document.getElementById('create-title').value = '';
+                document.getElementById('create-content').value = '';
+
+                updateTodayShares(39);
+                showPage('home-page');
+                updateHomePageState();
+                
+                setTimeout(function() {
+                    userState.feedback1Received = true;
+                    userState.waitingForFeedback = false;
+                    updateHomePageState();
+                    customAlert('匹配已完成！已收到第一条反馈，请查看。');
+                }, 180000);
+            } else {
+                customAlert('请填写标题和内容');
+            }
+        }
+        
+        // 开始任务按钮
+        if (target.id === 'start-task-btn' || target.closest('#start-task-btn')) {
+            e.preventDefault();
+            console.log('开始任务按钮点击（委托）');
+            
+            if (!userState.creationCompleted) {
+                // 任务1：还没创作，去创作页面
+                showPage('create-page');
+            } else if (!userState.feedback1Received) {
+                // 还没收到反馈，继续评价他人作品
+                console.log('进入评价流程');
+                
+                const shares = [
+                    { id: 1, content: '《那天风很大》\n\n风铃是被惊动的证人。\n倒影碎了又合上。\n你踩过松动的泥土，\n什么都没种下，就走了。\n我后来才想起，那是春天。\n但已经没有花了。', type: '诗歌', author: { nickname: '林深见鹿', gender: '女', tags: ['INFP', '诗歌', '摄影', '治愈系', '自然爱好者'], bio: '在文字里寻找灵魂的栖息地 | 偶尔拍照记录生活 | 相信每个瞬间都有意义' } },
+                    { id: 2, content: '《练习：隐喻》\n\n我的心是倒影里的天空，\n风铃在肋骨间摇晃不安，\n每寸血管都流着解冻的泥土。\n春天在皮下组织秘密登陆，\n而我假装仍在冬眠。', type: '诗歌', author: { nickname: '雾散长安', gender: '男', tags: ['INTJ', '哲学', '艺术', '深夜诗人', '咖啡成瘾'], bio: '白天是程序员，夜晚是诗人 | 在代码与文字之间寻找平衡 | 相信逻辑与感性可以共存' } },
+                    { id: 3, content: '《失眠纪要》\n\n数到第三千只羊时，风铃突然响了一下。\n没有风。那么是你来了吗。\n枕头像新翻的泥土，蓬松又潮湿。\n我翻了个身，把倒影压进床单的褶皱里。', type: '诗歌', author: { nickname: '星垂野阔', gender: '女', tags: ['INFJ', '心理学', '写作', '猫奴', '深夜emo选手'], bio: '心理学研究生 | 喜欢观察人类 | 写一些关于孤独与连接的文字 | 有两只猫' } },
+                    { id: 4, content: '《明天也是普通的一天》\n\n主歌A\n闹钟响了三遍才睁眼\n刷牙的时候看着镜子里的脸\n昨天熬夜追的剧还没看完\n今天又要迟到了吧\n\n主歌B\n地铁里的人都不说话\n各自抱着手机像抱着盾牌\n有人戴着耳机闭着眼\n有人在打字，打了又删\n\n副歌\n没关系，没关系\n反正明天也是普通的一天\n没关系，没关系\n我们早就习惯了\n在这座城市里\n做一个安静的零件\n\n主歌C\n午饭吃的是楼下的便利店\n坐在靠窗的位置看了会儿天\n窗台上的绿萝又黄了一片\n想浇水，又忘了\n\n桥段\n也不是没有开心的事\n只是开心的事\n好像不值得拿出来说\n就像你，就像我\n\n副歌（重复）\n没关系，没关系\n反正明天也是普通的一天\n没关系，没关系\n我们早就习惯了\n在这座城市里\n做一个安静的零件\n\n结尾\n闹钟响了\n又是明天', type: '歌词', author: { nickname: '城市漫游者', gender: '男', tags: ['ENFP', '音乐制作', '街头摄影', '社畜诗人', 'City Pop爱好者'], bio: '广告文案策划 | 业余音乐人 | 在城市的缝隙里寻找灵感 | 相信平凡中自有诗意' } }
+                ];
+                
+                const unevaluatedShares = shares.filter(share => !userState.evaluatedContentIds.includes(share.id));
+                
+                if (unevaluatedShares.length === 0) {
+                    customAlert('暂无新内容，请稍后再试');
+                    return;
+                }
+                
+                showPage('matching-page');
+                
+                setTimeout(function() {
+                    showFeedbackPage(unevaluatedShares[0]);
+                }, 2000);
+            } else if (userState.feedback1Received || userState.feedback2Received) {
+                // 收到反馈，先查看评价再填问卷
+                console.log('查看评价');
+                if (userState.feedback1Received && !userState.survey1Completed) {
+                    showReceivedFeedbackPage(1);
+                } else if (userState.feedback2Received) {
+                    showReceivedFeedbackPage(2);
+                }
+            }
+        }
+        
+        // 提交评价按钮
+        if (target.id === 'submit-feedback' || target.closest('#submit-feedback')) {
+            e.preventDefault();
+            console.log('提交评价按钮点击（委托）');
+            
+            const selectedShare = currentFeedbackShare;
+            if (!selectedShare) return;
+            
+            const stars = document.querySelectorAll('.star.active');
+            let selectedScore = 0;
+            if (stars.length > 0) {
+                selectedScore = parseFloat(stars[stars.length - 1].getAttribute('data-score'));
+            }
+            
+            const feedbackData = {
+                contentId: selectedShare.id,
+                content: selectedShare.content,
+                type: selectedShare.type,
+                score: selectedScore > 0 ? selectedScore : '未评分',
+                feedback: document.querySelector('textarea')?.value || ''
+            };
+            addLog('feedback', feedbackData);
+            uploadToFirebase(currentUserId, 'feedback', feedbackData);
+            
+            if (!userState.evaluatedContentIds) {
+                userState.evaluatedContentIds = [];
+            }
+            userState.evaluatedContentIds.push(selectedShare.id);
+            userState.feedbackCount++;
+            
+            customAlert('评价成功！');
+            showPage('home-page');
+            updateHomePageState();
+        }
+        
+        // 认可评价按钮
+        if (target.id === 'approve-feedback' || target.closest('#approve-feedback')) {
+            e.preventDefault();
+            console.log('认可评价按钮点击（委托）');
+            
+            const feedbackNumber = userState.feedback1Received && !userState.survey1Completed ? 1 : 2;
+            const responseData = { response: 'approve' };
+            addLog('feedback_response_' + feedbackNumber, responseData);
+            uploadToFirebase(currentUserId, 'feedback_response_' + feedbackNumber, responseData);
+            
+            if (feedbackNumber === 1) {
+                showPage('survey1-page');
+            } else {
+                showPage('survey2-page');
+            }
+        }
+        
+        // 不认可评价按钮
+        if (target.id === 'reject-feedback' || target.closest('#reject-feedback')) {
+            e.preventDefault();
+            console.log('不认可评价按钮点击（委托）');
+            
+            const feedbackNumber = userState.feedback1Received && !userState.survey1Completed ? 1 : 2;
+            const responseData = { response: 'reject' };
+            addLog('feedback_response_' + feedbackNumber, responseData);
+            uploadToFirebase(currentUserId, 'feedback_response_' + feedbackNumber, responseData);
+            
+            if (feedbackNumber === 1) {
+                showPage('survey1-page');
+            } else {
+                showPage('survey2-page');
+            }
+        }
+        
+        // 继续查看下一条评价按钮
+        if (target.id === 'next-feedback-btn' || target.closest('#next-feedback-btn')) {
+            e.preventDefault();
+            console.log('继续查看下一条评价按钮点击（委托）');
+            
+            showPage('publishing-success-page');
+            
+            setTimeout(function() {
+                userState.feedback2Received = true;
+                showReceivedFeedbackPage(2);
+            }, 2000);
+        }
+        
+        // 问卷1表单提交
+        if (target.closest('#survey1-form')) {
+            e.preventDefault();
+            console.log('问卷1表单提交（委托）');
+            
+            const q1 = document.querySelector('input[name="q1"]:checked')?.value || '未回答';
+            const q2 = document.querySelector('input[name="q2"]:checked')?.value || '未回答';
+            const q3 = document.querySelector('input[name="q3"]:checked')?.value || '未回答';
+            const q4 = document.querySelector('input[name="q4"]:checked')?.value || '未回答';
+            const q5 = document.querySelector('input[name="q5"]:checked')?.value || '未回答';
+            const q6 = document.querySelector('input[name="q6"]:checked')?.value || '未回答';
+            const q7 = document.querySelector('input[name="q7"]:checked')?.value || '未回答';
+            const q8 = document.querySelector('input[name="q8"]:checked')?.value || '未回答';
+            
+            const emotion1 = document.querySelector('input[name="emotion1"]:checked')?.value || '未回答';
+            const emotion2 = document.querySelector('input[name="emotion2"]:checked')?.value || '未回答';
+            const emotion3 = document.querySelector('input[name="emotion3"]:checked')?.value || '未回答';
+            const emotion4 = document.querySelector('input[name="emotion4"]:checked')?.value || '未回答';
+            const emotion5 = document.querySelector('input[name="emotion5"]:checked')?.value || '未回答';
+            const emotion6 = document.querySelector('input[name="emotion6"]:checked')?.value || '未回答';
+            
+            const survey1Data = {
+                q1, q2, q3, q4, q5, q6, q7, q8,
+                emotion1, emotion2, emotion3, emotion4, emotion5, emotion6
+            };
+            addLog('survey1', survey1Data);
+            uploadToFirebase(currentUserId, 'survey1', survey1Data);
+            
+            userState.survey1Completed = true;
+            customAlert('问卷已提交！');
+            
+            showPage('publishing-success-page');
+            
+            setTimeout(function() {
+                userState.feedback2Received = true;
+                showReceivedFeedbackPage(2);
+            }, 2000);
+        }
+        
+        // 问卷2表单提交
+        if (target.closest('#survey2-form')) {
+            e.preventDefault();
+            console.log('问卷2表单提交（委托）');
+            
+            const q1 = document.querySelector('input[name="q1"]:checked')?.value || '未回答';
+            const q2 = document.querySelector('input[name="q2"]:checked')?.value || '未回答';
+            const q3 = document.querySelector('input[name="q3"]:checked')?.value || '未回答';
+            const q4 = document.querySelector('input[name="q4"]:checked')?.value || '未回答';
+            const q5 = document.querySelector('input[name="q5"]:checked')?.value || '未回答';
+            const q6 = document.querySelector('input[name="q6"]:checked')?.value || '未回答';
+            const q7 = document.querySelector('input[name="q7"]:checked')?.value || '未回答';
+            const q8 = document.querySelector('input[name="q8"]:checked')?.value || '未回答';
+            
+            const emotion1 = document.querySelector('input[name="emotion1"]:checked')?.value || '未回答';
+            const emotion2 = document.querySelector('input[name="emotion2"]:checked')?.value || '未回答';
+            const emotion3 = document.querySelector('input[name="emotion3"]:checked')?.value || '未回答';
+            const emotion4 = document.querySelector('input[name="emotion4"]:checked')?.value || '未回答';
+            const emotion5 = document.querySelector('input[name="emotion5"]:checked')?.value || '未回答';
+            const emotion6 = document.querySelector('input[name="emotion6"]:checked')?.value || '未回答';
+            
+            const survey2Data = {
+                q1, q2, q3, q4, q5, q6, q7, q8,
+                emotion1, emotion2, emotion3, emotion4, emotion5, emotion6
+            };
+            addLog('survey2', survey2Data);
+            uploadToFirebase(currentUserId, 'survey2', survey2Data);
+            
+            userState.survey2Completed = true;
+            customAlert('问卷已提交！');
+            
+            showPage('home-page');
+            updateHomePageState();
+        }
+    });
+    
     // 初始显示注册页面
     showPage('register-page');
     // 隐藏底部导航栏，直到注册完成
@@ -546,7 +869,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // 更新导航栏状态
             navBtns.forEach(b => b.classList.remove('active'));
             document.querySelector('.nav-btn[data-page="home-page"]').classList.add('active');
-            // 更新主页状态显示
+            // 更新主页状态显示和步骤指引
             updateHomePageState();
         } else {
             customAlert('请填写昵称和性别');
@@ -586,29 +909,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 2000); // 2秒后显示反馈页面
     });
     
-    // 查看评价按钮点击事件
-    const viewFeedbackBtn = document.getElementById('view-feedback-btn');
-    if (viewFeedbackBtn) {
-        viewFeedbackBtn.addEventListener('click', function() {
-            if (userState.feedback1Received && !userState.survey1Completed) {
-                showReceivedFeedbackPage(1);
-            } else if (userState.feedback2Received && !userState.survey2Completed) {
-                showReceivedFeedbackPage(2);
-            }
-        });
-    }
-    
-    // 创作按钮点击事件
-    document.getElementById('create-btn').addEventListener('click', function() {
-        showPage('create-page');
-    });
-    
+
     // 显示反馈页面
     function showFeedbackPage(selectedShare) {
-        showPage('feedback-page');
-        
-        // 使用传入的内容或默认内容
-        const randomShare = selectedShare || {
+        // 保存当前评价内容供后续使用
+        currentFeedbackShare = selectedShare || {
             id: 1,
             content: '《那天风很大》\n\n风铃是被惊动的证人。\n倒影碎了又合上。\n你踩过松动的泥土，\n什么都没种下，就走了。\n我后来才想起，那是春天。\n但已经没有花了。',
             type: '诗歌',
@@ -620,6 +925,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         };
         
+        showPage('feedback-page');
+        
         const feedbackContainer = document.getElementById('feedback-container');
         feedbackContainer.innerHTML = '';
         
@@ -627,7 +934,7 @@ document.addEventListener('DOMContentLoaded', function() {
         card.className = 'feedback-card';
         
         // 生成标签HTML
-        const tagsHtml = randomShare.author.tags.map(tag => 
+        const tagsHtml = currentFeedbackShare.author.tags.map(tag => 
             `<span class="tag">${tag}</span>`
         ).join('');
         
@@ -638,16 +945,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     <i class="fas fa-user"></i>
                 </div>
                 <div class="author-info">
-                    <div class="author-nickname">${randomShare.author.nickname}</div>
+                    <div class="author-nickname">${currentFeedbackShare.author.nickname}</div>
                     <div class="author-tags">${tagsHtml}</div>
-                    <div class="author-bio">${randomShare.author.bio}</div>
+                    <div class="author-bio">${currentFeedbackShare.author.bio}</div>
                 </div>
             </div>
             
             <!-- 作品内容 -->
             <div class="work-section">
-                <h3>${randomShare.type}</h3>
-                <div class="content">${randomShare.content}</div>
+                <h3>${currentFeedbackShare.type}</h3>
+                <div class="content">${currentFeedbackShare.content}</div>
             </div>
         `;
         
@@ -722,6 +1029,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             userState.evaluatedContentIds.push(randomShare.id);
             
+            // 更新评价次数
+            userState.feedbackCount++;
+            
             // 显示成功提示
             customAlert('评价成功！');
             // 返回主页
@@ -795,26 +1105,22 @@ document.addEventListener('DOMContentLoaded', function() {
         feedbackResponseContent.innerHTML = `
             <h2>评价内容</h2>
             <div class="feedback-card">
-                <div class="content">
-                    <p>评分：${'★'.repeat(Math.floor(feedbackData.score))}${feedbackData.score % 1 === 0.5 ? '½' : ''}${'☆'.repeat(Math.floor(5 - feedbackData.score))} (${feedbackData.score}/5)</p>
-                    <p style="white-space: pre-wrap;">${feedbackData.content}</p>
-                </div>
-                <div id="evaluator-info" style="display: none; margin-top: 20px; padding: 20px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%); border-radius: 16px; border: 1px solid rgba(102, 126, 234, 0.2);">
+                <div class="evaluator-info-block">
                     <div style="text-align: center; margin-bottom: 15px;">
                         <div style="width: 70px; height: 70px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 2em; color: white; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
-                            ${feedbackData.isAI ? '<img src="ai-avatar.png" alt="AI头像" style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover;">' : '<i class="fas fa-user"></i>'}
+                            ${feedbackData.isAI ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>'}
                         </div>
                     </div>
                     <div style="text-align: center;">
                         <div style="font-size: 1.3em; font-weight: 600; color: #2c3e50; margin-bottom: 8px;">
                             ${feedbackData.username} ${feedbackData.isAI ? '<span style="font-size: 0.6em; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 3px 10px; border-radius: 20px; vertical-align: middle;">AI</span>' : ''}
                         </div>
-                        <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 10px;">
-                            ${feedbackData.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
-                        </div>
                     </div>
                 </div>
-                <button id="show-evaluator-btn" class="secondary-btn" style="margin-top: 15px; width: 100%;">用户信息</button>
+                <div class="content">
+                    <p>评分：${'★'.repeat(Math.floor(feedbackData.score))}${feedbackData.score % 1 === 0.5 ? '½' : ''}${'☆'.repeat(Math.floor(5 - feedbackData.score))} (${feedbackData.score}/5)</p>
+                    <p style="white-space: pre-wrap;">${feedbackData.content}</p>
+                </div>
             </div>
             <p style="margin-top: 30px;">您对收到的评价有什么看法？</p>
             <div class="feedback-response-buttons">
@@ -828,12 +1134,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 上传到 Firebase
         uploadToFirebase(currentUserId, 'received_feedback_' + feedbackNumber, feedbackData);
-        
-        // 查看评价者信息按钮
-        document.getElementById('show-evaluator-btn').addEventListener('click', function() {
-            document.getElementById('evaluator-info').style.display = 'block';
-            this.style.display = 'none';
-        });
         
         // 重新绑定认可/不认可按钮的事件监听器
         document.getElementById('approve-feedback').addEventListener('click', function() {
@@ -878,6 +1178,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const title = document.getElementById('create-title').value;
         const content = document.getElementById('create-content').value;
         
+        console.log('发布按钮点击 - title:', title, 'content:', content);
+        
         if (title && content) {
             // 记录创作信息
             const creationData = {
@@ -897,9 +1199,6 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('create-title').value = '';
             document.getElementById('create-content').value = '';
 
-            // 显示创作完成提示
-            showCreationCompleteTip();
-
             // 更新今日分享数量
             updateTodayShares(39);
 
@@ -912,7 +1211,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 userState.feedback1Received = true;
                 userState.waitingForFeedback = false;
                 updateHomePageState();
-                customAlert('匹配已完成！已收到评价，请查看。');
+                customAlert('匹配已完成！已收到第一条反馈，请查看。');
             }, 180000); // 3分钟
         } else {
             customAlert('请填写标题和内容');
@@ -958,8 +1257,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 显示成功提示
         customAlert('问卷已提交！');
-        // 显示等待下一条评价页面
-        showPage('wait-next-feedback-page');
+        
+        // 直接显示匹配提示，准备接收第二个评价
+        showPage('publishing-success-page');
+        
+        // 2秒后自动显示收到的评价2（不再需要用户点击按钮）
+        setTimeout(function() {
+            userState.feedback2Received = true;
+            showReceivedFeedbackPage(2);
+        }, 2000);
     });
 
     // 继续查看下一条评价按钮

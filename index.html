@@ -87,50 +87,70 @@
                     <p class="home-subtitle">分享此刻，分享生活</p>
                 </div>
 
-                <div id="task-status" class="task-status">
-                    <div id="status-spinner" class="status-spinner" style="display: none;"></div>
-                    <span id="feedback-status" class="status-badge">创作任务：待完成</span>
-                </div>
-
-                <div class="home-stats">
-                    <div class="stat-item">
-                        <span class="stat-number">38</span>
-                        <span class="stat-label">今日分享</span>
+                <!-- 任务进度指引 -->
+                <div class="task-guide">
+                    <div class="task-guide-title">测试任务进度</div>
+                    <div class="task-steps">
+                        <div class="task-step" id="step1">
+                            <div class="step-indicator">
+                                <span class="step-number">1</span>
+                                <span class="step-check"><i class="fas fa-check"></i></span>
+                            </div>
+                            <div class="step-info">
+                                <span class="step-title">创作短诗</span>
+                                <span class="step-desc">围绕"春天"主题创作</span>
+                            </div>
+                        </div>
+                        <div class="step-connector"></div>
+                        <div class="task-step" id="step2">
+                            <div class="step-indicator">
+                                <span class="step-number">2</span>
+                                <span class="step-check"><i class="fas fa-check"></i></span>
+                            </div>
+                            <div class="step-info">
+                                <span class="step-title">评价他人作品</span>
+                                <span class="step-desc">至少评价1首</span>
+                            </div>
+                        </div>
+                        <div class="step-connector"></div>
+                        <div class="task-step" id="step3">
+                            <div class="step-indicator">
+                                <span class="step-number">3</span>
+                                <span class="step-check"><i class="fas fa-check"></i></span>
+                            </div>
+                            <div class="step-info">
+                                <span class="step-title">查看评价并完成评价反馈</span>
+                                <span class="step-desc">完成最终问卷</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="action-buttons">
-                    <button id="create-btn" class="primary-btn">我来创作</button>
-                    <button id="match-btn" class="secondary-btn">我来反馈</button>
-                    <p id="match-hint" class="button-hint">评价其他用户的创作</p>
-                    <button id="view-feedback-btn" class="secondary-btn" style="display: none;">查看评价</button>
+                <!-- 当前任务卡片 -->
+                <div id="current-task-card" class="current-task-card">
+                    <div class="task-card-header">
+                        <i class="fas fa-pencil-alt"></i>
+                        <span id="current-task-title">当前任务：创作短诗</span>
+                    </div>
+                    <div class="task-card-content" id="current-task-content">
+                        <p id="current-task-desc">请根据提示创作一首关于春天的短诗。</p>
+                    </div>
+                    <button id="start-task-btn" class="primary-btn">开始创作</button>
                 </div>
 
-                <!-- 创作完成提示 -->
-                <div id="creation-complete-tip" class="creation-tip" style="display: none;">
-                    <div class="tip-header" onclick="toggleCreationTip()">
-                        <span class="tip-title">
-                            <i class="fas fa-info-circle"></i>
-                            提示
-                        </span>
-                        <i class="fas fa-chevron-down tip-arrow" id="tip-arrow"></i>
-                    </div>
-                    <div class="tip-content" id="tip-content">
-                        <p>您已经完成创作，正在为您匹配反馈者。</p>
-                        <p>在此期间，您可以先对他人的作品进行反馈评价。</p>
-                    </div>
+                <!-- 等待提示区域 -->
+                <div id="waiting-area" class="waiting-area" style="display: none;">
+                    <div class="waiting-spinner"></div>
+                    <p id="waiting-message">正在匹配反馈者...</p>
                 </div>
 
-               
-
-                <div class="feed-mask">
-                    <div class="feed-mask-content">
-                        <i class="fas fa-lock"></i>
-                        <p>完成任务后可查看更多内容</p>
-                    </div>
+                <!-- 任务完成提示 -->
+                <div id="task-complete-area" class="task-complete-area" style="display: none;">
+                    <i class="fas fa-check-circle"></i>
+                    <h3>所有任务已完成</h3>
+                    <p>感谢您的参与！</p>
                 </div>
 
-                <p id="task-hint" class="task-hint">请先完成创作</p>
             </div>
         </main>
 
@@ -217,7 +237,7 @@
                     <button class="tool-btn" title="添加标签"><i class="fas fa-tag"></i></button>
                 </div>
 
-                <button id="submit-creation">发布</button>
+                <button id="submit-creation" type="button">发布</button>
             </div>
         </main>
 
