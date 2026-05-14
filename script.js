@@ -744,8 +744,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 2000);
         }
         
-        // 问卷1表单提交
-        if (target.closest('#survey1-form')) {
+        // 问卷1表单提交（只有点击提交按钮时才触发）
+        const survey1SubmitBtn = document.querySelector('#survey1-form button[type="submit"]');
+        if (survey1SubmitBtn && (target === survey1SubmitBtn || target.closest('#survey1-form button[type="submit"]'))) {
             e.preventDefault();
             console.log('问卷1表单提交（委托）');
             
@@ -783,8 +784,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 2000);
         }
         
-        // 问卷2表单提交
-        if (target.closest('#survey2-form')) {
+        // 问卷2表单提交（只有点击提交按钮时才触发）
+        const survey2SubmitBtn = document.querySelector('#survey2-form button[type="submit"]');
+        if (survey2SubmitBtn && (target === survey2SubmitBtn || target.closest('#survey2-form button[type="submit"]'))) {
             e.preventDefault();
             console.log('问卷2表单提交（委托）');
             
